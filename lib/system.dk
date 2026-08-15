@@ -1,8 +1,10 @@
-# System Umbrella Module - imports hardware, HDMI, input, and UI modules
+# System Umbrella Module - imports hardware, HDMI, disk, input, and UI modules
 import hardware/screen.dk
 import hardware/hdmi.dk
 import hardware/keyboard.dk
-import hardware/speaker.dk
 import hardware/mouse.dk
+import hardware/speaker.dk
+import hardware/disk.dk
 import input.dk
+import input_devices.dk
 import ui/window.dk

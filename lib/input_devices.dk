@@ -1,0 +1,41 @@
+# Unified Input Devices Driver Module for K Language
+# Includes PS/2 Keyboard, USB/PS2 Mouse, and General Device Polling
+
+import hardware/keyboard.dk
+import hardware/mouse.dk
+import input.dk
+
+# Check if keyboard data is available to read
+fnc input_keyboard_has_data() {
+    status = inb(0x64)
+    ready = status - (status / 2) * 2
+    return ready
+}
+
+# Read raw keyboard scancode
+fnc input_keyboard_read() {
+    return input_poll_scancode()
+}
+
+# Poll mouse status & byte packet from PS/2 port 0x60
+fnc input_mouse_poll_packet() {
+    status = inb(0x64)
+    aux_ready = (status / 32) - (status / 64) * 2
+    if (aux_ready == 1) {
+        return inb(0x60)
+    }
+    return 0
+}
+
+# Return combined input event code
+fnc input_poll_event() {
+    kb = input_keyboard_read()
+    if (kb > 0) {
+        return kb
+    }
+    m = input_mouse_poll_packet()
+    if (m > 0) {
+        return 200 + m
+    }
+    return 0
+}

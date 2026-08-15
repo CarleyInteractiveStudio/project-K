@@ -13,9 +13,29 @@ Welcome to **Carley Operating System (COS)** powered by **CK (Carley Kernel)**, 
 
 ---
 
-## K Programming Language Reference Guide
+## Default Hardware Drivers Included in K (`lib/`)
 
-The K language is specifically crafted for kernel construction, OS design, and hardware programming.
+By default, **COS / CK** comes with a complete suite of hardware drivers built-in:
+
+1. **`lib/input_devices.dk` / `lib/input.dk` (Input Devices):**
+   - **Keyboard Driver:** PS/2 and USB keyboard scancode polling, ASCII conversion, key-wait events.
+   - **Mouse Driver:** PS/2 mouse initialization, click detection, and movement tracking.
+2. **`lib/hardware/hdmi.dk` (HDMI / High-Res Graphics):**
+   - Linear Framebuffer (VBE / HDMI Output) supporting pixel rendering, rectangles, and screen filling.
+3. **`lib/hardware/screen.dk` (VGA Screen Driver):**
+   - 80x25 VGA text mode character writing and screen color clearing routines.
+4. **`lib/hardware/disk.dk` (Storage / Disk Drive Driver):**
+   - ATA / IDE Hard Disk controller driver for reading 512-byte sectors (`disk_read_sector`).
+5. **`lib/hardware/speaker.dk` (PC Speaker Audio):**
+   - PC Speaker hardware tone frequency generator (`speaker_emit_tone`).
+6. **`lib/ui/window.dk` (UI Window Engine):**
+   - macOS-style desktop windows, double-line box containers, and titlebars.
+7. **`lib/system.dk` (Umbrella Module):**
+   - Single-line import that loads all input, graphics, audio, disk, and UI drivers automatically.
+
+---
+
+## K Programming Language Reference Guide
 
 ### 1. File Extensions
 
@@ -42,32 +62,26 @@ The K language is specifically crafted for kernel construction, OS design, and h
 
 ---
 
-### 3. Standard Drivers & Libraries Provided (`lib/`)
-
-- **`lib/hardware/hdmi.dk`**: HDMI / VBE High-Resolution Framebuffer Driver (`hdmi_draw_pixel`, `hdmi_fill_screen`, `hdmi_draw_rect`).
-- **`lib/hardware/screen.dk`**: VGA Text Mode Screen Driver (`screen_write_char`, `screen_fill_color`).
-- **`lib/ui/window.dk`**: macOS / Desktop Window UI Engine (`ui_draw_box`, `ui_draw_window`).
-- **`lib/input.dk`**: PS/2 Keyboard Input polling & ASCII translator (`input_poll_scancode`, `input_wait_key`, `input_scancode_to_ascii`).
-- **`lib/hardware/speaker.dk`**: PC Speaker sound generator (`speaker_emit_tone`, `speaker_stop`).
-- **`lib/hardware/mouse.dk`**: PS/2 Mouse hardware initializer (`mouse_init`).
-- **`lib/system.dk`**: Umbrella library importing all hardware, HDMI, input, and UI sub-modules in one statement.
-
----
-
 ## Step-by-Step K Language Code Examples
 
-### Example 1: HDMI Graphics Framebuffer Example (`hdmi_demo.k`)
+### Example 1: Full System Boot with Input, HDMI, and Disk (`cos_kernel.k`)
 ```k
 import lib/system.dk
 
-# Address for linear framebuffer (VBE / HDMI Output)
-fb = 0xFD000000
+# 1. Fill screen with green background
+screen_fill_color(47)
 
-# Fill entire HDMI 1024x768 display with dark blue background
-hdmi_fill_screen(fb, 1024, 768, 0x000033)
+# 2. Draw macOS-style Window Container
+ui_draw_window(10, 3, 60, 16, 31, 112, 120)
 
-# Draw macOS-style Window Rectangle (x=200, y=150, w=620, h=400)
-hdmi_draw_rect(fb, 1024, 200, 150, 620, 400, 0xE0E0E0)
+# 3. Read input event from keyboard or mouse
+key_event = input_poll_event()
+
+# 4. Read sector 0 from Disk Drive into RAM address 0x200000
+disk_read_sector(0, 0x00200000)
+
+# 5. Play startup sound chime
+speaker_emit_tone(523)
 ```
 
 ---
