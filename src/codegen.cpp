@@ -22,9 +22,26 @@ std::string CodeGenerator::generate(ProgramNode* program) {
 }
 
 void CodeGenerator::emitX86_64(ProgramNode* program) {
-    asmOut << ".code64\n";
+    // Bare-metal Multiboot 1 compliant boot header and entry code
+    asmOut << ".code32\n";
     asmOut << ".global _start\n";
     asmOut << ".text\n\n";
+
+    // Multiboot Header Magic constants
+    asmOut << "# Multiboot 1 Header\n";
+    asmOut << ".align 4\n";
+    asmOut << "multiboot_header:\n";
+    asmOut << "    .long 0x1BADB002\n";                     // Magic number
+    asmOut << "    .long 0x00000003\n";                     // Flags: align modules + mem info
+    asmOut << "    .long -(0x1BADB002 + 0x00000003)\n\n";   // Checksum
+
+    asmOut << "_start:\n";
+    asmOut << "    cli\n";
+    asmOut << "    mov $0x90000, %esp\n"; // Setup stack pointer
+
+    if (!program->topLevelStatements.empty()) {
+        asmOut << "    call k_toplevel_init\n";
+    }
 
     bool hasMain = false;
     for (const auto& fn : program->functions) {
@@ -34,15 +51,10 @@ void CodeGenerator::emitX86_64(ProgramNode* program) {
         }
     }
 
-    // Bare-metal boot entry point
-    asmOut << "_start:\n";
-    asmOut << "    mov $0x90000, %rsp\n"; // setup initial stack pointer for bare-metal
-    if (!program->topLevelStatements.empty()) {
-        asmOut << "    call k_toplevel_init\n";
-    }
     if (hasMain) {
         asmOut << "    call main\n";
     }
+
     asmOut << "1:\n";
     asmOut << "    hlt\n";
     asmOut << "    jmp 1b\n\n";
@@ -59,16 +71,16 @@ void CodeGenerator::emitX86_64(ProgramNode* program) {
 
         asmOut << ".global k_toplevel_init\n";
         asmOut << "k_toplevel_init:\n";
-        asmOut << "    push %rbp\n";
-        asmOut << "    mov %rsp, %rbp\n";
-        asmOut << "    sub $256, %rsp\n"; // Reserve stack space for locals
+        asmOut << "    push %ebp\n";
+        asmOut << "    mov %esp, %ebp\n";
+        asmOut << "    sub $256, %esp\n";
 
         for (const auto& stmt : program->topLevelStatements) {
             genStatement(stmt.get());
         }
 
-        asmOut << "    mov %rbp, %rsp\n";
-        asmOut << "    pop %rbp\n";
+        asmOut << "    mov %ebp, %esp\n";
+        asmOut << "    pop %ebp\n";
         asmOut << "    ret\n\n";
     }
 }
@@ -79,19 +91,14 @@ void CodeGenerator::genFunction(FunctionDecl* fn) {
 
     asmOut << ".global " << fn->name << "\n";
     asmOut << fn->name << ":\n";
-    asmOut << "    push %rbp\n";
-    asmOut << "    mov %rsp, %rbp\n";
-    asmOut << "    sub $256, %rsp\n"; // Reserve stack frame space for parameters & local variables
+    asmOut << "    push %ebp\n";
+    asmOut << "    mov %esp, %ebp\n";
+    asmOut << "    sub $256, %esp\n";
 
-    // Allocate parameters on stack
-    // x86_64 System V ABI registers for params: rdi, rsi, rdx, rcx, r8, r9
-    static const char* paramRegs[] = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
+    // Standard cdecl 32-bit parameters from stack: [ebp + 8], [ebp + 12], etc.
     for (size_t i = 0; i < fn->params.size(); ++i) {
-        stackOffset += 8;
-        localVars[fn->params[i]] = -stackOffset;
-        if (i < 6) {
-            asmOut << "    mov " << paramRegs[i] << ", " << -stackOffset << "(%rbp)\n";
-        }
+        int paramOffset = 8 + (i * 4);
+        localVars[fn->params[i]] = paramOffset;
     }
 
     // Process function statements
@@ -99,8 +106,8 @@ void CodeGenerator::genFunction(FunctionDecl* fn) {
         genStatement(stmt.get());
     }
 
-    asmOut << "    mov %rbp, %rsp\n";
-    asmOut << "    pop %rbp\n";
+    asmOut << "    mov %ebp, %esp\n";
+    asmOut << "    pop %ebp\n";
     asmOut << "    ret\n\n";
 }
 
@@ -108,33 +115,33 @@ void CodeGenerator::genStatement(StatementNode* stmt) {
     if (auto assign = dynamic_cast<AssignStmt*>(stmt)) {
         genExpression(assign->value.get());
         if (localVars.find(assign->varName) == localVars.end()) {
-            stackOffset += 8;
+            stackOffset += 4;
             localVars[assign->varName] = -stackOffset;
         }
         int offset = localVars[assign->varName];
-        asmOut << "    mov %rax, " << offset << "(%rbp)\n";
+        asmOut << "    mov %eax, " << offset << "(%ebp)\n";
     }
     else if (auto ret = dynamic_cast<ReturnStmt*>(stmt)) {
         if (ret->value) {
             genExpression(ret->value.get());
         }
-        asmOut << "    mov %rbp, %rsp\n";
-        asmOut << "    pop %rbp\n";
+        asmOut << "    mov %ebp, %esp\n";
+        asmOut << "    pop %ebp\n";
         asmOut << "    ret\n";
     }
     else if (auto mw = dynamic_cast<MemWriteStmt*>(stmt)) {
         genExpression(mw->value.get());
-        asmOut << "    push %rax\n";
+        asmOut << "    push %eax\n";
         genExpression(mw->address.get());
-        asmOut << "    pop %rbx\n"; // value
-        asmOut << "    mov %rbx, (%rax)\n"; // write value to direct memory address in rax
+        asmOut << "    pop %ebx\n"; // value
+        asmOut << "    mov %ebx, (%eax)\n"; // write value to direct memory address in eax
     }
     else if (auto ob = dynamic_cast<OutbStmt*>(stmt)) {
         genExpression(ob->value.get());
-        asmOut << "    push %rax\n";
+        asmOut << "    push %eax\n";
         genExpression(ob->port.get());
-        asmOut << "    mov %rax, %rdx\n"; // port in rdx
-        asmOut << "    pop %rax\n";  // val in rax
+        asmOut << "    mov %eax, %edx\n"; // port in edx
+        asmOut << "    pop %eax\n";  // val in eax
         asmOut << "    out %al, %dx\n"; // x86 outb instruction
     }
     else if (auto ifs = dynamic_cast<IfStmt*>(stmt)) {
@@ -142,7 +149,7 @@ void CodeGenerator::genStatement(StatementNode* stmt) {
         std::string endLabel = newLabel("L_end");
 
         genExpression(ifs->condition.get());
-        asmOut << "    cmp $0, %rax\n";
+        asmOut << "    cmp $0, %eax\n";
         asmOut << "    je " << elseLabel << "\n";
 
         for (const auto& s : ifs->thenBranch) {
@@ -158,7 +165,7 @@ void CodeGenerator::genStatement(StatementNode* stmt) {
 
         asmOut << startLabel << ":\n";
         genExpression(ws->condition.get());
-        asmOut << "    cmp $0, %rax\n";
+        asmOut << "    cmp $0, %eax\n";
         asmOut << "    je " << endLabel << "\n";
 
         for (const auto& s : ws->body) {
@@ -174,12 +181,12 @@ void CodeGenerator::genStatement(StatementNode* stmt) {
 
 void CodeGenerator::genExpression(ExpressionNode* expr) {
     if (auto num = dynamic_cast<NumberExpr*>(expr)) {
-        asmOut << "    mov $" << num->value << ", %rax\n";
+        asmOut << "    mov $" << num->value << ", %eax\n";
     }
     else if (auto var = dynamic_cast<VariableExpr*>(expr)) {
         if (localVars.find(var->name) != localVars.end()) {
             int offset = localVars[var->name];
-            asmOut << "    mov " << offset << "(%rbp), %rax\n";
+            asmOut << "    mov " << offset << "(%ebp), %eax\n";
         } else {
             std::cerr << "Codegen error: undefined variable '" << var->name << "'\n";
             exit(1);
@@ -187,53 +194,52 @@ void CodeGenerator::genExpression(ExpressionNode* expr) {
     }
     else if (auto mr = dynamic_cast<MemReadExpr*>(expr)) {
         genExpression(mr->address.get());
-        asmOut << "    mov (%rax), %rax\n";
+        asmOut << "    mov (%eax), %eax\n";
     }
     else if (auto ib = dynamic_cast<InbExpr*>(expr)) {
         genExpression(ib->port.get());
-        asmOut << "    mov %rax, %rdx\n";
-        asmOut << "    xor %rax, %rax\n";
+        asmOut << "    mov %eax, %edx\n";
+        asmOut << "    xor %eax, %eax\n";
         asmOut << "    in %dx, %al\n";
     }
     else if (auto bin = dynamic_cast<BinaryExpr*>(expr)) {
         genExpression(bin->right.get());
-        asmOut << "    push %rax\n";
+        asmOut << "    push %eax\n";
         genExpression(bin->left.get());
-        asmOut << "    pop %rbx\n";
+        asmOut << "    pop %ebx\n";
 
         if (bin->op == "+") {
-            asmOut << "    add %rbx, %rax\n";
+            asmOut << "    add %ebx, %eax\n";
         } else if (bin->op == "-") {
-            asmOut << "    sub %rbx, %rax\n";
+            asmOut << "    sub %ebx, %eax\n";
         } else if (bin->op == "*") {
-            asmOut << "    imul %rbx, %rax\n";
+            asmOut << "    imul %ebx, %eax\n";
         } else if (bin->op == "/") {
-            asmOut << "    xor %rdx, %rdx\n";
-            asmOut << "    idiv %rbx\n";
+            asmOut << "    xor %edx, %edx\n";
+            asmOut << "    idiv %ebx\n";
         } else if (bin->op == "==") {
-            asmOut << "    cmp %rbx, %rax\n";
+            asmOut << "    cmp %ebx, %eax\n";
             asmOut << "    sete %al\n";
-            asmOut << "    movzbq %al, %rax\n";
+            asmOut << "    movzbl %al, %eax\n";
         } else if (bin->op == ">") {
-            asmOut << "    cmp %rbx, %rax\n";
+            asmOut << "    cmp %ebx, %eax\n";
             asmOut << "    setg %al\n";
-            asmOut << "    movzbq %al, %rax\n";
+            asmOut << "    movzbl %al, %eax\n";
         } else if (bin->op == "<") {
-            asmOut << "    cmp %rbx, %rax\n";
+            asmOut << "    cmp %ebx, %eax\n";
             asmOut << "    setl %al\n";
-            asmOut << "    movzbq %al, %rax\n";
+            asmOut << "    movzbl %al, %eax\n";
         }
     }
     else if (auto call = dynamic_cast<CallExpr*>(expr)) {
-        static const char* paramRegs[] = {"%rdi", "%rsi", "%rdx", "%rcx", "%r8", "%r9"};
-        for (size_t i = 0; i < call->args.size(); ++i) {
+        // Push arguments in reverse for cdecl 32-bit
+        for (int i = (int)call->args.size() - 1; i >= 0; --i) {
             genExpression(call->args[i].get());
-            if (i < 6) {
-                asmOut << "    mov %rax, " << paramRegs[i] << "\n";
-            } else {
-                asmOut << "    push %rax\n";
-            }
+            asmOut << "    push %eax\n";
         }
         asmOut << "    call " << call->name << "\n";
+        if (!call->args.empty()) {
+            asmOut << "    add $" << (call->args.size() * 4) << ", %esp\n";
+        }
     }
 }

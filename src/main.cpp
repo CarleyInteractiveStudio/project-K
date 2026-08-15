@@ -35,14 +35,13 @@ void processImports(ProgramNode* mainProg, const std::string& baseDir, std::vect
         if (targetPath.is_absolute()) {
             resolvedPath = targetPath;
         } else {
-            // First check relative to baseDir (file location)
             fs::path relPath = fs::path(baseDir) / targetPath;
             if (fs::exists(relPath)) {
                 resolvedPath = relPath;
-            } else if (fs::exists(targetPath)) { // Check relative to working directory
+            } else if (fs::exists(targetPath)) {
                 resolvedPath = targetPath;
             } else {
-                resolvedPath = relPath; // Fallback for error messaging
+                resolvedPath = relPath;
             }
         }
 
@@ -77,15 +76,12 @@ void processImports(ProgramNode* mainProg, const std::string& baseDir, std::vect
 
         fs::path currentModuleDir = fs::path(canonicalPath).parent_path();
 
-        // Recursively process nested imports inside the imported .dk module
         processImports(importedProg.get(), currentModuleDir.string(), visitedImports);
 
-        // Merge functions from imported module
         for (auto& fn : importedProg->functions) {
             mainProg->functions.push_back(std::move(fn));
         }
 
-        // Merge top level statements from imported module
         for (auto& stmt : importedProg->topLevelStatements) {
             mainProg->topLevelStatements.push_back(std::move(stmt));
         }
@@ -101,7 +97,7 @@ int main(int argc, char* argv[]) {
 
     std::string inputFile;
     std::string outputFile = "kernel.bin";
-    Arch targetArch = Arch::X86_64;
+    Arch targetArch = Arch::X86_32;
 
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
@@ -146,15 +142,15 @@ int main(int argc, char* argv[]) {
 
     std::cout << "[kcc] Assembly generated: " << asmFilename << "\n";
 
-    std::string asCmd = "as --64 " + asmFilename + " -o " + outputFile + ".o";
-    std::string ldCmd = "ld -m elf_x86_64 --oformat binary -Ttext 0x100000 " + outputFile + ".o -o " + outputFile;
+    std::string asCmd = "as --32 " + asmFilename + " -o " + outputFile + ".o";
+    std::string ldCmd = "ld -m elf_i386 -Ttext 0x100000 " + outputFile + ".o -o " + outputFile;
 
-    std::cout << "[kcc] Compiling bare-metal executable...\n";
+    std::cout << "[kcc] Compiling bare-metal bootable kernel executable...\n";
     int res1 = system(asCmd.c_str());
     int res2 = system(ldCmd.c_str());
 
     if (res1 == 0 && res2 == 0) {
-        std::cout << "[kcc] Successfully compiled " << inputFile << " -> " << outputFile << "\n";
+        std::cout << "[kcc] Successfully compiled bootable kernel " << inputFile << " -> " << outputFile << "\n";
     } else {
         std::cerr << "[kcc] Warning: direct system assembly/linking completed with exit code " << (res1 | res2) << "\n";
     }
