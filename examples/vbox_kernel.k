@@ -1,56 +1,58 @@
 import lib/system.dk
 
-# Direct Boot Execution Sequence in K
-# Display message: "el kernel arranco con el proyecto k"
+# 1. Fill background with green (0x2F = green background, bright white text)
+screen_fill_color(47)
 
-# e (101), l (108)
-screen_write_char(0, 0, 101, 14) # 'e'
-screen_write_char(1, 0, 108, 14) # 'l'
-screen_write_char(2, 0, 32, 14)  # ' '
+# 2. Draw UI window at position (x=15, y=5) with width=50, height=12
+# title_color = 31 (blue background), body_color = 112 (gray background), border_color = 120
+ui_draw_window(15, 5, 50, 12, 31, 112, 120)
 
-# k (107), e (101), r (114), n (110), e (101), l (108)
-screen_write_char(3, 0, 107, 10) # 'k'
-screen_write_char(4, 0, 101, 10) # 'e'
-screen_write_char(5, 0, 114, 10) # 'r'
-screen_write_char(6, 0, 110, 10) # 'n'
-screen_write_char(7, 0, 101, 10) # 'e'
-screen_write_char(8, 0, 108, 10) # 'l'
-screen_write_char(9, 0, 32, 14)  # ' '
+# Window Title: " K-OS WINDOW SYSTEM "
+screen_write_char(28, 6, 75, 31)  # K
+screen_write_char(29, 6, 45, 31)  # -
+screen_write_char(30, 6, 79, 31)  # O
+screen_write_char(31, 6, 83, 31)  # S
+screen_write_char(32, 6, 32, 31)  #
+screen_write_char(33, 6, 87, 31)  # W
+screen_write_char(34, 6, 73, 31)  # I
+screen_write_char(35, 6, 78, 31)  # N
+screen_write_char(36, 6, 68, 31)  # D
+screen_write_char(37, 6, 79, 31)  # O
+screen_write_char(38, 6, 87, 31)  # W
 
-# a (97), r (114), r (114), a (97), n (110), c (99), o (111)
-screen_write_char(10, 0, 97, 14)  # 'a'
-screen_write_char(11, 0, 114, 14) # 'r'
-screen_write_char(12, 0, 114, 14) # 'r'
-screen_write_char(13, 0, 97, 14)  # 'a'
-screen_write_char(14, 0, 110, 14) # 'n'
-screen_write_char(15, 0, 99, 14)  # 'c'
-screen_write_char(16, 0, 111, 14) # 'o'
-screen_write_char(17, 0, 32, 14)  # ' '
+# Window Body Text: "Kernel arranco con exito!"
+screen_write_char(20, 9, 75, 112)  # K
+screen_write_char(21, 9, 101, 112) # e
+screen_write_char(22, 9, 114, 112) # r
+screen_write_char(23, 9, 110, 112) # n
+screen_write_char(24, 9, 101, 112) # e
+screen_write_char(25, 9, 108, 112) # l
+screen_write_char(26, 9, 32, 112)  #
+screen_write_char(27, 9, 97, 112)  # a
+screen_write_char(28, 9, 114, 112) # r
+screen_write_char(29, 9, 114, 112) # r
+screen_write_char(30, 9, 97, 112)  # a
+screen_write_char(31, 9, 110, 112) # n
+screen_write_char(32, 9, 99, 112)  # c
+screen_write_char(33, 9, 111, 112) # o
 
-# c (99), o (111), n (110)
-screen_write_char(18, 0, 99, 14)  # 'c'
-screen_write_char(19, 0, 111, 14) # 'o'
-screen_write_char(20, 0, 110, 14) # 'n'
-screen_write_char(21, 0, 32, 14)  # ' '
+# Prompt Text: "Input: [ System Ready ]"
+screen_write_char(20, 12, 73, 112)  # I
+screen_write_char(21, 12, 110, 112) # n
+screen_write_char(22, 12, 112, 112) # p
+screen_write_char(23, 12, 117, 112) # u
+screen_write_char(24, 12, 116, 112) # t
+screen_write_char(25, 12, 58, 112)  # :
+screen_write_char(26, 12, 32, 112)  #
+screen_write_char(27, 12, 91, 112)  # [
+screen_write_char(28, 12, 32, 112)  #
+screen_write_char(29, 12, 82, 112)  # R
+screen_write_char(30, 12, 101, 112) # e
+screen_write_char(31, 12, 97, 112)  # a
+screen_write_char(32, 12, 100, 112) # d
+screen_write_char(33, 12, 121, 112) # y
+screen_write_char(34, 12, 32, 112)  #
+screen_write_char(35, 12, 93, 112)  # ]
 
-# e (101), l (108)
-screen_write_char(22, 0, 101, 14) # 'e'
-screen_write_char(23, 0, 108, 14) # 'l'
-screen_write_char(24, 0, 32, 14)  # ' '
-
-# p (112), r (114), o (111), y (121), e (101), c (99), t (116), o (111)
-screen_write_char(25, 0, 112, 11) # 'p'
-screen_write_char(26, 0, 114, 11) # 'r'
-screen_write_char(27, 0, 111, 11) # 'o'
-screen_write_char(28, 0, 121, 11) # 'y'
-screen_write_char(29, 0, 101, 11) # 'e'
-screen_write_char(30, 0, 99, 11) # 'c'
-screen_write_char(31, 0, 116, 11) # 't'
-screen_write_char(32, 0, 111, 11) # 'o'
-screen_write_char(33, 0, 32, 14)  # ' '
-
-# k (107)
-screen_write_char(34, 0, 107, 14) # 'k'
-
-# Sound beep notification on boot
-speaker_emit_tone(440)
+# Emit startup audio chime
+speaker_emit_tone(523)

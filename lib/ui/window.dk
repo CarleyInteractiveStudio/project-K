@@ -1,0 +1,62 @@
+# Window UI Library for K Language
+
+fnc ui_draw_box(x, y, width, height, body_color, border_color) {
+    r = 0
+    while (r < height) {
+        c = 0
+        while (c < width) {
+            curr_x = x + c
+            curr_y = y + r
+
+            # Default inside
+            char_attr = body_color
+            ch = 32 # space
+
+            # Draw borders
+            if (r == 0) {
+                char_attr = border_color
+                ch = 205 # double horizontal line '═'
+                if (c == 0) { ch = 201 } # top-left '╔'
+                if (c == width - 1) { ch = 187 } # top-right '╗'
+            }
+            if (r == height - 1) {
+                char_attr = border_color
+                ch = 205 # double horizontal line '═'
+                if (c == 0) { ch = 200 } # bottom-left '╚'
+                if (c == width - 1) { ch = 188 } # bottom-right '╝'
+            }
+            if (c == 0) {
+                if (r > 0) {
+                    if (r < height - 1) {
+                        char_attr = border_color
+                        ch = 186 # vertical '║'
+                    }
+                }
+            }
+            if (c == width - 1) {
+                if (r > 0) {
+                    if (r < height - 1) {
+                        char_attr = border_color
+                        ch = 186 # vertical '║'
+                    }
+                }
+            }
+
+            screen_write_char(curr_x, curr_y, ch, char_attr)
+            c = c + 1
+        }
+        r = r + 1
+    }
+}
+
+fnc ui_draw_window(x, y, width, height, title_color, body_color, border_color) {
+    # Draw background box
+    ui_draw_box(x, y, width, height, body_color, border_color)
+
+    # Fill title bar line (row y + 1)
+    c = 1
+    while (c < width - 1) {
+        screen_write_char(x + c, y + 1, 32, title_color)
+        c = c + 1
+    }
+}

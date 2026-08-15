@@ -1,0 +1,75 @@
+# Keyboard Input Driver Library for K
+
+fnc input_poll_scancode() {
+    status = inb(0x64)
+    # Check if bit 0 (data ready) is set
+    ready = status - (status / 2) * 2
+    if (ready == 1) {
+        return inb(0x60)
+    }
+    return 0
+}
+
+fnc input_wait_key() {
+    code = 0
+    while (code == 0) {
+        code = input_poll_scancode()
+        # Ignore key releases (scancodes >= 128)
+        if (code > 127) {
+            code = 0
+        }
+    }
+    return code
+}
+
+fnc input_scancode_to_ascii(code) {
+    # Number key scancodes 0x02 - 0x0B -> '1' - '0'
+    if (code == 2) { return 49 }
+    if (code == 3) { return 50 }
+    if (code == 4) { return 51 }
+    if (code == 5) { return 52 }
+    if (code == 6) { return 53 }
+    if (code == 7) { return 54 }
+    if (code == 8) { return 55 }
+    if (code == 9) { return 56 }
+    if (code == 10) { return 57 }
+    if (code == 11) { return 48 }
+
+    # Letters Q-P
+    if (code == 16) { return 113 } # q
+    if (code == 17) { return 119 } # w
+    if (code == 18) { return 101 } # e
+    if (code == 19) { return 114 } # r
+    if (code == 20) { return 116 } # t
+    if (code == 21) { return 121 } # y
+    if (code == 22) { return 117 } # u
+    if (code == 23) { return 105 } # i
+    if (code == 24) { return 111 } # o
+    if (code == 25) { return 112 } # p
+
+    # Letters A-L
+    if (code == 30) { return 97 }  # a
+    if (code == 31) { return 115 } # s
+    if (code == 32) { return 100 } # d
+    if (code == 33) { return 102 } # f
+    if (code == 34) { return 103 } # g
+    if (code == 35) { return 104 } # h
+    if (code == 36) { return 106 } # j
+    if (code == 37) { return 107 } # k
+    if (code == 38) { return 108 } # l
+
+    # Letters Z-M
+    if (code == 44) { return 122 } # z
+    if (code == 45) { return 120 } # x
+    if (code == 46) { return 99 }  # c
+    if (code == 47) { return 118 } # v
+    if (code == 48) { return 98 }  # b
+    if (code == 49) { return 110 } # n
+    if (code == 50) { return 109 } # m
+
+    # Space (57), Enter (28)
+    if (code == 57) { return 32 }
+    if (code == 28) { return 10 }
+
+    return 0
+}

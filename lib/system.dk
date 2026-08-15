@@ -1,5 +1,7 @@
-# System Umbrella Module - imports screen, keyboard, speaker, and mouse drivers
+# System Umbrella Module - imports hardware, input, and UI modules
 import hardware/screen.dk
 import hardware/keyboard.dk
 import hardware/speaker.dk
 import hardware/mouse.dk
+import input.dk
+import ui/window.dk
