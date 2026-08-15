@@ -1,0 +1,18 @@
+# Definition file for VGA text mode display and low-level hardware output
+fnc vga_print_char(col, row, ch, color) {
+    # VGA memory starts at address 0xB8000
+    # Each character takes 2 bytes (character byte + attribute byte)
+    offset = (row * 80 + col) * 2
+    addr = 0x000B8000 + offset
+
+    # Write ASCII character to VGA buffer
+    mem_write(addr, ch)
+
+    # Write attribute/color byte to next address
+    mem_write(addr + 1, color)
+}
+
+fnc uart_putc(ch) {
+    # COM1 Serial Port output (port 0x3F8)
+    outb(0x3F8, ch)
+}

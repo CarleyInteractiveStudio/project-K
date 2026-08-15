@@ -1,0 +1,15 @@
+# PC Speaker Driver Module
+fnc speaker_emit_tone(freq) {
+    divisor = 1193180 / freq
+    outb(0x43, 0xB6)
+    outb(0x42, divisor)
+    outb(0x42, divisor / 256)
+
+    state = inb(0x61)
+    outb(0x61, state)
+}
+
+fnc speaker_stop() {
+    state = inb(0x61)
+    outb(0x61, state)
+}

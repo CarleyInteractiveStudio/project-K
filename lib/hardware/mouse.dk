@@ -1,0 +1,9 @@
+# PS/2 Mouse Driver Module
+fnc mouse_init() {
+    # Enable PS/2 auxiliary device
+    outb(0x64, 0xA8)
+}
+
+fnc mouse_read_data() {
+    return inb(0x60)
+}

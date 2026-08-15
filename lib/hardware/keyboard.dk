@@ -1,0 +1,6 @@
+# PS/2 Keyboard Driver Module
+fnc keyboard_read_key() {
+    # Port 0x60 PS/2 data port
+    key = inb(0x60)
+    return key
+}

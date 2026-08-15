@@ -1,0 +1,43 @@
+# ATA IDE Hard Disk Driver Module for K Language
+# Ports: 0x1F0 (Data), 0x1F2 (Sector Count), 0x1F3 - 0x1F6 (LBA), 0x1F7 (Command/Status)
+
+fnc disk_wait_ready() {
+    status = 0x80
+    while (status == 128) {
+        raw_status = inb(0x1F7)
+        # Check BSY bit (bit 7)
+        status = (raw_status / 128) * 128
+    }
+}
+
+fnc disk_read_sector(lba_addr, memory_buffer_addr) {
+    disk_wait_ready()
+
+    # Set sector count = 1
+    outb(0x1F2, 1)
+
+    # Set LBA address bytes
+    outb(0x1F3, lba_addr)
+    outb(0x1F4, lba_addr / 256)
+    outb(0x1F5, lba_addr / 65536)
+    outb(0x1F6, 0xE0) # Primary Master Drive
+
+    # Command 0x20 = READ SECTORS
+    outb(0x1F7, 32)
+
+    disk_wait_ready()
+
+    # Read 512 bytes (256 16-bit words) into memory
+    word_idx = 0
+    while (word_idx < 256) {
+        # Read byte low and byte high
+        b_low = inb(0x1F0)
+        b_high = inb(0x1F0)
+
+        target_addr = memory_buffer_addr + (word_idx * 2)
+        mem_write(target_addr, b_low)
+        mem_write(target_addr + 1, b_high)
+
+        word_idx = word_idx + 1
+    }
+}

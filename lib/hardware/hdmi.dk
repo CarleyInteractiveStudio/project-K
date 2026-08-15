@@ -1,0 +1,33 @@
+# HDMI / VBE Graphics Driver Module for K Language
+# Standard Linear Framebuffer Base: 0xFD000000 or VBE Mode 1024x768 / 1280x720 / 1920x1080 32-bit BPP
+
+fnc hdmi_draw_pixel(fb_addr, width, x, y, color_rgb) {
+    # 32-bit BPP (4 bytes per pixel)
+    offset = (y * width + x) * 4
+    pixel_addr = fb_addr + offset
+    mem_write(pixel_addr, color_rgb)
+}
+
+fnc hdmi_fill_screen(fb_addr, width, height, color_rgb) {
+    y = 0
+    while (y < height) {
+        x = 0
+        while (x < width) {
+            hdmi_draw_pixel(fb_addr, width, x, y, color_rgb)
+            x = x + 1
+        }
+        y = y + 1
+    }
+}
+
+fnc hdmi_draw_rect(fb_addr, fb_width, rect_x, rect_y, rect_w, rect_h, color_rgb) {
+    r = 0
+    while (r < rect_h) {
+        c = 0
+        while (c < rect_w) {
+            hdmi_draw_pixel(fb_addr, fb_width, rect_x + c, rect_y + r, color_rgb)
+            c = c + 1
+        }
+        r = r + 1
+    }
+}

@@ -1,0 +1,12 @@
+# Definition file for mathematical operations
+fnc sumar(a, b) {
+    return a + b
+}
+
+fnc restar(a, b) {
+    return a - b
+}
+
+fnc multiplicar(a, b) {
+    return a * b
+}
