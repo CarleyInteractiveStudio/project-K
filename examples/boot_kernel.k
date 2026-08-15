@@ -1,7 +1,7 @@
 import lib/system.dk
 import lib/math.dk
 
-# Direct Boot Execution Sequence
+# Direct Boot Execution Sequence in K (No main() function required)
 mouse_init()
 
 screen_write_char(0, 0, 80, 11) # 'P'
@@ -16,20 +16,16 @@ screen_write_char(8, 0, 75, 14) # 'K'
 
 speaker_emit_tone(523) # Play C5 note
 
-fnc main() {
-    v1 = 250
-    v2 = 250
-    total = add(v1, v2)
+v1 = 250
+v2 = 250
+total = add(v1, v2)
 
-    if (total == 500) {
-        screen_write_char(0, 1, 66, 10) # 'B'
-        screen_write_char(1, 1, 79, 10) # 'O'
-        screen_write_char(2, 1, 79, 10) # 'O'
-        screen_write_char(3, 1, 84, 10) # 'T'
-        screen_write_char(4, 1, 32, 10) # ' '
-        screen_write_char(5, 1, 79, 10) # 'O'
-        screen_write_char(6, 1, 75, 10) # 'K'
-    }
-
-    return 0
+if (total == 500) {
+    screen_write_char(0, 1, 66, 10) # 'B'
+    screen_write_char(1, 1, 79, 10) # 'O'
+    screen_write_char(2, 1, 79, 10) # 'O'
+    screen_write_char(3, 1, 84, 10) # 'T'
+    screen_write_char(4, 1, 32, 10) # ' '
+    screen_write_char(5, 1, 79, 10) # 'O'
+    screen_write_char(6, 1, 75, 10) # 'K'
 }
