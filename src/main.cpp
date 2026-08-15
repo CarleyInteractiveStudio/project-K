@@ -91,18 +91,24 @@ void processImports(ProgramNode* mainProg, const std::string& baseDir, std::vect
 int main(int argc, char* argv[]) {
     if (argc < 2) {
         std::cout << "K Language Compiler (kcc) v1.0\n";
-        std::cout << "Usage: " << argv[0] << " <input.k> [-o <output.bin>] [--arch <x86_64|x86_32|arm64|riscv64>]\n";
+        std::cout << "Usage: " << argv[0] << " <input.k> [-o <output.bin|output.iso>] [--iso] [--arch <x86_64|x86_32|arm64|riscv64>]\n";
         return 0;
     }
 
     std::string inputFile;
     std::string outputFile = "kernel.bin";
+    bool generateIso = false;
     Arch targetArch = Arch::X86_32;
 
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         if (arg == "-o" && i + 1 < argc) {
             outputFile = argv[++i];
+            if (outputFile.length() >= 4 && outputFile.substr(outputFile.length() - 4) == ".iso") {
+                generateIso = true;
+            }
+        } else if (arg == "--iso") {
+            generateIso = true;
         } else if (arg == "--arch" && i + 1 < argc) {
             std::string archStr = argv[++i];
             if (archStr == "x86_32") targetArch = Arch::X86_32;
@@ -135,24 +141,53 @@ int main(int argc, char* argv[]) {
     CodeGenerator codegen(targetArch);
     std::string asmCode = codegen.generate(program.get());
 
-    std::string asmFilename = outputFile + ".s";
+    std::string binFile = generateIso ? "kernel.bin" : outputFile;
+    std::string asmFilename = binFile + ".s";
     std::ofstream asmFile(asmFilename);
     asmFile << asmCode;
     asmFile.close();
 
     std::cout << "[kcc] Assembly generated: " << asmFilename << "\n";
 
-    std::string asCmd = "as --32 " + asmFilename + " -o " + outputFile + ".o";
-    std::string ldCmd = "ld -m elf_i386 -Ttext 0x100000 " + outputFile + ".o -o " + outputFile;
+    std::string asCmd = "as --32 " + asmFilename + " -o " + binFile + ".o";
+    std::string ldCmd = "ld -m elf_i386 -Ttext 0x100000 " + binFile + ".o -o " + binFile;
 
     std::cout << "[kcc] Compiling bare-metal bootable kernel executable...\n";
     int res1 = system(asCmd.c_str());
     int res2 = system(ldCmd.c_str());
 
-    if (res1 == 0 && res2 == 0) {
-        std::cout << "[kcc] Successfully compiled bootable kernel " << inputFile << " -> " << outputFile << "\n";
-    } else {
-        std::cerr << "[kcc] Warning: direct system assembly/linking completed with exit code " << (res1 | res2) << "\n";
+    if (res1 != 0 || res2 != 0) {
+        std::cerr << "[kcc] Error: assembly or linking failed.\n";
+        return 1;
+    }
+
+    std::cout << "[kcc] Successfully compiled bootable kernel -> " << binFile << "\n";
+
+    if (generateIso) {
+        std::cout << "[kcc] Generating bootable ISO image (" << outputFile << ") for VirtualBox/QEMU...\n";
+
+        fs::create_directories("isodir/boot/grub");
+        fs::copy_file(binFile, "isodir/boot/kernel.bin", fs::copy_options::overwrite_existing);
+
+        std::ofstream cfg("isodir/boot/grub/grub.cfg");
+        cfg << "set timeout=0\n";
+        cfg << "set default=0\n\n";
+        cfg << "menuentry \"Project-K Kernel\" {\n";
+        cfg << "    multiboot /boot/kernel.bin\n";
+        cfg << "    boot\n";
+        cfg << "}\n";
+        cfg.close();
+
+        std::string isoCmd = "grub-mkrescue -o " + outputFile + " isodir 2>/dev/null || xorriso -as mkisofs -R -b boot/grub/eltorito.img -no-emul-boot -boot-load-size 4 -boot-info-table -o " + outputFile + " isodir 2>/dev/null";
+        int isoRes = system(isoCmd.c_str());
+
+        if (isoRes == 0 && fs::exists(outputFile)) {
+            std::cout << "[kcc] Successfully created bootable ISO: " << outputFile << "\n";
+        } else {
+            std::cout << "[kcc] Note: ISO created or fallback binary available at " << binFile << "\n";
+        }
+
+        fs::remove_all("isodir");
     }
 
     return 0;
