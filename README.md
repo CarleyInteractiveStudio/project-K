@@ -1,81 +1,90 @@
-# project-K Language & Compiler (`kcc`)
+# Carley Operating System (COS) & CK Kernel with K Language (`kcc`)
 
-`project-K` is a standalone programming language and compiler (`kcc`) written in C++17 specifically designed for bare-metal software, operating system kernels, and low-level driver development without requiring external build tools for K projects.
-
----
-
-## Key Features
-
-1. **Bare-Metal & Multiboot 1 Compliant:**
-   - Generates executable binaries with built-in Multiboot headers that boot directly on bare metal hardware or hypervisors like QEMU.
-2. **Direct Instruction Execution:**
-   - Executable statements outside functions run sequentially line-by-line upon boot. Semicolons `;` are optional.
-3. **Modular Definition Files (`.dk`):**
-   - Import functions, constants, and drivers using `import filename.dk`. Umbrella files (e.g. `lib/system.dk`) can import other `.dk` files to aggregate entire hardware subsystem drivers.
-4. **Direct Low-Level Memory & Hardware I/O:**
-   - Read/write physical memory and ports using native intrinsics: `mem_write(addr, val)`, `mem_read(addr)`, `outb(port, val)`, `inb(port)`.
+Welcome to **Carley Operating System (COS)** powered by **CK (Carley Kernel)**, built completely with the custom **K Programming Language** and its compiler `kcc`.
 
 ---
 
-## Language Keywords
+## About CK (Carley Kernel) & COS (Carley Operating System)
 
-| Keyword | Description |
-| :--- | :--- |
-| `import` | Includes module/library definitions from `.dk` files into the local program scope. |
-| `fnc` / `fn` | Declares a user-defined function block with parameters. |
-| `if` | Conditional control block. Conditions are enclosed in parentheses `()`. |
-| `while` | Loop control block executing code as long as the condition evaluates to true. |
-| `return` | Exits function execution and optionally returns a value to the caller. |
-| `mem_write(address, value)` | Writes a raw byte/word directly to physical memory address. |
-| `mem_read(address)` | Reads data directly from a physical memory address. |
-| `outb(port, value)` | Sends a byte to an x86 hardware I/O port. |
-| `inb(port)` | Reads a byte from an x86 hardware I/O port. |
+- **Kernel Name:** `CK` (*Carley Kernel*)
+- **Operating System Name:** `COS` (*Carley Operating System*)
+- **Architecture Target:** 32-bit x86 Bare-Metal (Multiboot 1 standard compliant)
+- **UI Vision:** Customized macOS-style graphical desktop experience (Top Menu Bar, Desktop Window Containers, and Bottom Dock) running directly on bare metal.
 
 ---
 
-## File Types
+## K Programming Language Reference Guide
 
-- **`.k` Files (Direct Instruction Scripts / Main Entry):**
-  Contains direct system commands and kernel boot sequences.
-- **`.dk` Files (Definition & Library Modules):**
-  Contains reusable function, mathematical, and driver declarations (e.g. `lib/math.dk`, `lib/system.dk`).
+The K language is specifically crafted for kernel construction, OS design, and hardware programming.
+
+### 1. File Extensions
+
+- **`.k` Files (Main Kernel Executable Scripts):**
+  Contains direct top-level statements that execute sequentially line-by-line upon machine boot. No mandatory `main()` function is required.
+- **`.dk` Files (Definition & Library Header Modules):**
+  Contains reusable hardware drivers, mathematical functions, and UI routines (e.g. `lib/system.dk`, `lib/hardware/hdmi.dk`).
 
 ---
 
-## Code Example
+### 2. Language Keywords & Syntax Rules
 
+| Keyword / Primitive | Description | Example |
+| :--- | :--- | :--- |
+| `import` | Includes module definitions from `.dk` files. | `import lib/system.dk` |
+| `fnc` / `fn` | Declares a named function with parameters. | `fnc add(a, b) { return a + b }` |
+| `if` | Conditional branching block. | `if (x == 10) { ... }` |
+| `while` | Loop statement. | `while (count < 80) { ... }` |
+| `return` | Exits function and returns a value. | `return 0` |
+| `mem_write(address, val)` | Writes a raw byte/word directly to physical RAM address. | `mem_write(0x000B8000, 65)` |
+| `mem_read(address)` | Reads raw value directly from physical RAM address. | `val = mem_read(0x000B8000)` |
+| `outb(port, val)` | Writes byte directly to hardware I/O port. | `outb(0x61, 3)` |
+| `inb(port)` | Reads byte directly from hardware I/O port. | `status = inb(0x64)` |
+
+---
+
+### 3. Standard Drivers & Libraries Provided (`lib/`)
+
+- **`lib/hardware/hdmi.dk`**: HDMI / VBE High-Resolution Framebuffer Driver (`hdmi_draw_pixel`, `hdmi_fill_screen`, `hdmi_draw_rect`).
+- **`lib/hardware/screen.dk`**: VGA Text Mode Screen Driver (`screen_write_char`, `screen_fill_color`).
+- **`lib/ui/window.dk`**: macOS / Desktop Window UI Engine (`ui_draw_box`, `ui_draw_window`).
+- **`lib/input.dk`**: PS/2 Keyboard Input polling & ASCII translator (`input_poll_scancode`, `input_wait_key`, `input_scancode_to_ascii`).
+- **`lib/hardware/speaker.dk`**: PC Speaker sound generator (`speaker_emit_tone`, `speaker_stop`).
+- **`lib/hardware/mouse.dk`**: PS/2 Mouse hardware initializer (`mouse_init`).
+- **`lib/system.dk`**: Umbrella library importing all hardware, HDMI, input, and UI sub-modules in one statement.
+
+---
+
+## Step-by-Step K Language Code Examples
+
+### Example 1: HDMI Graphics Framebuffer Example (`hdmi_demo.k`)
 ```k
-import lib/math.dk
 import lib/system.dk
 
-# Direct Boot Statements
-screen_write_char(0, 0, 75, 10) # Print 'K' on VGA screen
-mouse_init()                     # Initialize PS/2 mouse hardware
+# Address for linear framebuffer (VBE / HDMI Output)
+fb = 0xFD000000
 
-fnc main() {
-    result = add(100, 200)
-    if (result == 300) {
-        speaker_emit_tone(440)  # Play beep chime
-    }
-    return 0
-}
+# Fill entire HDMI 1024x768 display with dark blue background
+hdmi_fill_screen(fb, 1024, 768, 0x000033)
+
+# Draw macOS-style Window Rectangle (x=200, y=150, w=620, h=400)
+hdmi_draw_rect(fb, 1024, 200, 150, 620, 400, 0xE0E0E0)
 ```
 
 ---
 
-## How to Build the Compiler (`kcc`)
+## How to Build and Run COS / CK Kernel
 
+### 1. Build the Compiler (`kcc`)
 ```bash
 make
 ```
 
-## How to Compile a Kernel with `kcc`
-
+### 2. Compile `cos_kernel.k` into `kernel.bin`
 ```bash
-./kcc examples/boot_kernel.k -o kernel.bin
+./kcc examples/cos_kernel.k -o kernel.bin
 ```
 
-To run your bootable kernel in QEMU:
-```bash
-qemu-system-i386 -kernel kernel.bin
+### 3. Test in Windows PowerShell with QEMU
+```powershell
+& "C:\Program Files\qemu\qemu-system-i386.exe" -kernel kernel.bin
 ```
