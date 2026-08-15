@@ -44,9 +44,9 @@ Token Lexer::nextToken() {
         return {TokenType::TOK_NEWLINE, "\n", curLine};
     }
 
-    if (std::isalpha(c) || c == '_') {
+    if (std::isalpha(c) || c == '_' || c == '.') {
         std::string val;
-        while (std::isalnum(peek()) || peek() == '_' || peek() == '.') {
+        while (std::isalnum(peek()) || peek() == '_' || peek() == '.' || peek() == '/') {
             val += advance();
         }
         if (val == "import") return {TokenType::TOK_IMPORT, val, line};

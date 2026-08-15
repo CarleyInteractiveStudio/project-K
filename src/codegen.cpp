@@ -15,7 +15,6 @@ std::string CodeGenerator::generate(ProgramNode* program) {
     if (targetArch == Arch::X86_64) {
         emitX86_64(program);
     } else {
-        // Fallback x86_64 structure for multi-arch compatibility
         emitX86_64(program);
     }
 
@@ -27,10 +26,23 @@ void CodeGenerator::emitX86_64(ProgramNode* program) {
     asmOut << ".global _start\n";
     asmOut << ".text\n\n";
 
-    // Standard bare-metal boot entry point
+    bool hasMain = false;
+    for (const auto& fn : program->functions) {
+        if (fn->name == "main") {
+            hasMain = true;
+            break;
+        }
+    }
+
+    // Bare-metal boot entry point
     asmOut << "_start:\n";
     asmOut << "    mov $0x90000, %rsp\n"; // setup initial stack pointer for bare-metal
-    asmOut << "    call main\n";
+    if (!program->topLevelStatements.empty()) {
+        asmOut << "    call k_toplevel_init\n";
+    }
+    if (hasMain) {
+        asmOut << "    call main\n";
+    }
     asmOut << "1:\n";
     asmOut << "    hlt\n";
     asmOut << "    jmp 1b\n\n";
@@ -42,12 +54,19 @@ void CodeGenerator::emitX86_64(ProgramNode* program) {
 
     // Top-level execution wrapper if top-level code exists
     if (!program->topLevelStatements.empty()) {
+        localVars.clear();
+        stackOffset = 0;
+
+        asmOut << ".global k_toplevel_init\n";
         asmOut << "k_toplevel_init:\n";
         asmOut << "    push %rbp\n";
         asmOut << "    mov %rsp, %rbp\n";
+        asmOut << "    sub $256, %rsp\n"; // Reserve stack space for locals
+
         for (const auto& stmt : program->topLevelStatements) {
             genStatement(stmt.get());
         }
+
         asmOut << "    mov %rbp, %rsp\n";
         asmOut << "    pop %rbp\n";
         asmOut << "    ret\n\n";
@@ -62,6 +81,7 @@ void CodeGenerator::genFunction(FunctionDecl* fn) {
     asmOut << fn->name << ":\n";
     asmOut << "    push %rbp\n";
     asmOut << "    mov %rsp, %rbp\n";
+    asmOut << "    sub $256, %rsp\n"; // Reserve stack frame space for parameters & local variables
 
     // Allocate parameters on stack
     // x86_64 System V ABI registers for params: rdi, rsi, rdx, rcx, r8, r9
@@ -90,7 +110,6 @@ void CodeGenerator::genStatement(StatementNode* stmt) {
         if (localVars.find(assign->varName) == localVars.end()) {
             stackOffset += 8;
             localVars[assign->varName] = -stackOffset;
-            asmOut << "    sub $8, %rsp\n";
         }
         int offset = localVars[assign->varName];
         asmOut << "    mov %rax, " << offset << "(%rbp)\n";

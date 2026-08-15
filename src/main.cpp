@@ -29,8 +29,29 @@ void processImports(ProgramNode* mainProg, const std::string& baseDir, std::vect
     mainProg->imports.clear();
 
     for (const auto& imp : currentImports) {
-        fs::path impPath = fs::path(baseDir) / imp->filepath;
-        std::string canonicalPath = impPath.string();
+        fs::path targetPath = fs::path(imp->filepath);
+        fs::path resolvedPath;
+
+        if (targetPath.is_absolute()) {
+            resolvedPath = targetPath;
+        } else {
+            // First check relative to baseDir (file location)
+            fs::path relPath = fs::path(baseDir) / targetPath;
+            if (fs::exists(relPath)) {
+                resolvedPath = relPath;
+            } else if (fs::exists(targetPath)) { // Check relative to working directory
+                resolvedPath = targetPath;
+            } else {
+                resolvedPath = relPath; // Fallback for error messaging
+            }
+        }
+
+        std::string canonicalPath;
+        try {
+            canonicalPath = fs::weakly_canonical(resolvedPath).string();
+        } catch (...) {
+            canonicalPath = resolvedPath.string();
+        }
 
         bool alreadyVisited = false;
         for (const auto& v : visitedImports) {
@@ -43,8 +64,8 @@ void processImports(ProgramNode* mainProg, const std::string& baseDir, std::vect
 
         visitedImports.push_back(canonicalPath);
 
-        if (!fs::exists(impPath)) {
-            std::cerr << "Error: imported module not found: '" << canonicalPath << "'\n";
+        if (!fs::exists(canonicalPath)) {
+            std::cerr << "Error: imported module not found: '" << canonicalPath << "' (imported from " << baseDir << ")\n";
             exit(1);
         }
 
@@ -54,15 +75,17 @@ void processImports(ProgramNode* mainProg, const std::string& baseDir, std::vect
         Parser parser(tokens);
         auto importedProg = parser.parseProgram();
 
-        // Recursively process nested imports in the imported module
-        processImports(importedProg.get(), impPath.parent_path().string(), visitedImports);
+        fs::path currentModuleDir = fs::path(canonicalPath).parent_path();
 
-        // Merge functions into main program
+        // Recursively process nested imports inside the imported .dk module
+        processImports(importedProg.get(), currentModuleDir.string(), visitedImports);
+
+        // Merge functions from imported module
         for (auto& fn : importedProg->functions) {
             mainProg->functions.push_back(std::move(fn));
         }
 
-        // Merge top level statements
+        // Merge top level statements from imported module
         for (auto& stmt : importedProg->topLevelStatements) {
             mainProg->topLevelStatements.push_back(std::move(stmt));
         }
@@ -123,7 +146,6 @@ int main(int argc, char* argv[]) {
 
     std::cout << "[kcc] Assembly generated: " << asmFilename << "\n";
 
-    // Assembling and Linking into standalone binary executable
     std::string asCmd = "as --64 " + asmFilename + " -o " + outputFile + ".o";
     std::string ldCmd = "ld -m elf_x86_64 --oformat binary -Ttext 0x100000 " + outputFile + ".o -o " + outputFile;
 

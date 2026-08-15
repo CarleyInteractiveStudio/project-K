@@ -1,0 +1,7 @@
+# VGA Driver Module
+fnc pantalla_escribir(col, fila, caracter, color) {
+    offset = (fila * 80 + col) * 2
+    direccion = 0x000B8000 + offset
+    mem_write(direccion, caracter)
+    mem_write(direccion + 1, color)
+}

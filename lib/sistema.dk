@@ -1,0 +1,5 @@
+# Hardware Umbrella Module - imports screen, keyboard, speaker, and mouse drivers
+import hardware/pantalla.dk
+import hardware/teclado.dk
+import hardware/sonido.dk
+import hardware/raton.dk

@@ -1,0 +1,6 @@
+# PS/2 Keyboard Driver Module
+fnc teclado_leer_tecla() {
+    # Port 0x60 is the PS/2 Data Port
+    tecla = inb(0x60)
+    return tecla
+}
