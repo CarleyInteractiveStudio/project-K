@@ -1,3 +1,0 @@
-fnc multiplicar(a, b) {
-    return a * b
-}

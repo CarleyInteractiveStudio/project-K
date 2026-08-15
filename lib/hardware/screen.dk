@@ -1,0 +1,7 @@
+# VGA Text Screen Driver Module
+fnc screen_write_char(col, row, ch, color) {
+    offset = (row * 80 + col) * 2
+    addr = 0x000B8000 + offset
+    mem_write(addr, ch)
+    mem_write(addr + 1, color)
+}

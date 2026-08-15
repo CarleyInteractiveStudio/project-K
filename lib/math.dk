@@ -1,0 +1,4 @@
+# Umbrella Math Module - imports all math operations
+import math/add.dk
+import math/subtract.dk
+import math/multiply.dk
